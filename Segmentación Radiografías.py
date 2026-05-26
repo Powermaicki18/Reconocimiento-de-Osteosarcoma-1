@@ -1,37 +1,3 @@
-"""
-=============================================================================
-SCRIPT 1 — SEGMENTACIÓN DE RADIOGRAFÍAS DE SARCOMAS ÓSEOS
-=============================================================================
-Descripción:
-    Carga imágenes desde las carpetas /Sarcomas Benignos y /Sarcomas Malignos,
-    aplica segmentación automática (umbralización + morfología) para aislar
-    el hueso, guarda las máscaras e imágenes segmentadas, y muestra resultados.
-
-Estructura esperada del dataset:
-    dataset/
-    ├── Sarcomas Benignos/
-    │   ├── IMG000006.jpeg
-    │   └── ...
-    └── Sarcomas Malignos/
-        ├── IMG000012.jpeg
-        └── ...
-
-Salida:
-    output_segmentacion/
-    ├── Sarcomas Benignos/
-    │   ├── IMG000006_segmentada.png
-    │   ├── IMG000006_mascara.png
-    │   └── ...
-    └── Sarcomas Malignos/
-        ├── IMG000012_segmentada.png
-        ├── IMG000012_mascara.png
-        └── ...
-
-Librerías requeridas:
-    pip install opencv-python numpy matplotlib scikit-image tqdm
-=============================================================================
-"""
-
 import os
 import cv2
 import numpy as np
@@ -45,7 +11,7 @@ from pathlib import Path
 
 
 # ─────────────────────────────────────────────────────────────
-#  CONFIGURACIÓN — Ajusta estas rutas antes de ejecutar
+#  Rutas a las carpetas
 # ─────────────────────────────────────────────────────────────
 DATASET_ROOT   = "/home/manguito/Code/University/Reconocimiento de Patrones/DataSet Full/dataset 1" # Carpeta raíz del dataset
 OUTPUT_ROOT    = "/home/manguito/Code/University/Reconocimiento de Patrones/DataSet Full/Resultados Segmentación" # Carpeta de salida
@@ -79,14 +45,6 @@ def mejorar_contraste(img: np.ndarray) -> np.ndarray:
 
 
 def segmentar_hueso(img: np.ndarray) -> np.ndarray:
-    """
-    Segmenta la región ósea usando:
-      1. Suavizado gaussiano
-      2. Umbralización de Otsu con offset ajustable
-      3. Operaciones morfológicas para limpiar la máscara
-      4. Selección de las regiones más grandes (hueso principal)
-    Devuelve una máscara binaria uint8 (0 / 255).
-    """
     # 1. Suavizado
     img_suave = gaussian(img, sigma=SIGMA_GAUSS, preserve_range=True).astype(np.uint8)
 
@@ -154,7 +112,7 @@ def visualizar_muestra(muestras: list, titulo: str = "Resultados de Segmentació
     """Muestra una grilla con ejemplos: original | máscara | segmentada."""
     n = len(muestras)
     if n == 0:
-        print("⚠ No hay muestras para visualizar.")
+        print("No hay muestras para visualizar.")
         return
 
     fig = plt.figure(figsize=(15, 5 * n), facecolor="#0d1117")
@@ -195,7 +153,7 @@ def procesar_dataset():
         carpeta_salida  = os.path.join(OUTPUT_ROOT, categoria)
 
         if not os.path.isdir(carpeta_entrada):
-            print(f"\n⚠  Carpeta no encontrada: {carpeta_entrada} — se omite.")
+            print(f"\n Carpeta no encontrada: {carpeta_entrada} — se omite.")
             continue
 
         # Listar imágenes válidas
@@ -205,10 +163,10 @@ def procesar_dataset():
         ]
 
         if not imagenes:
-            print(f"\n⚠  No se encontraron imágenes en: {carpeta_entrada}")
+            print(f"\n No se encontraron imágenes en: {carpeta_entrada}")
             continue
 
-        print(f"\n📁 Procesando: {categoria}  ({len(imagenes)} imágenes)")
+        print(f"\n Procesando: {categoria}  ({len(imagenes)} imágenes)")
         os.makedirs(carpeta_salida, exist_ok=True)
 
         for nombre_archivo in tqdm(imagenes, desc=f"  {categoria[:25]}", unit="img"):
@@ -238,8 +196,8 @@ def procesar_dataset():
                 print(f"\n  ✗ Error en {nombre_archivo}: {e}")
 
     print("\n" + "=" * 60)
-    print(f"  ✅ Total procesadas: {total_procesadas} imágenes")
-    print(f"  📂 Resultados guardados en: {os.path.abspath(OUTPUT_ROOT)}")
+    print(f" Total procesadas: {total_procesadas} imágenes")
+    print(f" Resultados guardados en: {os.path.abspath(OUTPUT_ROOT)}")
     print("=" * 60)
 
     # Mostrar hasta 4 muestras (2 por clase si hay suficientes)
@@ -251,4 +209,4 @@ def procesar_dataset():
 # ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     ruta_salida = procesar_dataset()
-    print(f"\n📌 Ruta de salida: {ruta_salida}")
+    print(f"\n Ruta de salida: {ruta_salida}")
