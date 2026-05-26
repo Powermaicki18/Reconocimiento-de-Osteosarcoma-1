@@ -1,46 +1,3 @@
-"""
-=============================================================================
-SCRIPT 1 — SEGMENTACIÓN DE RADIOGRAFÍAS DE SARCOMAS ÓSEOS
-        (con relleno de huecos por morfología matemática)
-=============================================================================
-Descripción:
-    Carga imágenes desde las carpetas /Sarcomas Benignos y /Sarcomas Malignos,
-    aplica segmentación automática (umbralización + morfología) para aislar
-    el hueso, guarda las máscaras e imágenes segmentadas, y muestra resultados.
-
-    Pipeline de relleno de huecos (en orden de aplicación):
-      1. Cierre morfológico  — une grietas y bordes cercanos con un kernel elíptico
-      2. Flood-fill inverso  — rellena todo lo que NO es fondo desde las esquinas
-      3. fillConvexHull      — rellena la envoltura convexa de cada región
-      4. Binary closing (skimage) con disco grande — cierra huecos residuales
-    Cada paso actúa sobre el residuo del anterior, lo que permite cerrar huecos
-    de distintos tamaños y formas sin distorsionar el contorno externo del hueso.
-
-Estructura esperada del dataset:
-    dataset/
-    ├── Sarcomas Benignos/
-    │   ├── IMG000006.jpeg
-    │   └── ...
-    └── Sarcomas Malignos/
-        ├── IMG000012.jpeg
-        └── ...
-
-Salida:
-    output_segmentacion/
-    ├── Sarcomas Benignos/
-    │   ├── IMG000006_segmentada.png
-    │   ├── IMG000006_mascara.png
-    │   └── ...
-    └── Sarcomas Malignos/
-        ├── IMG000012_segmentada.png
-        ├── IMG000012_mascara.png
-        └── ...
-
-Librerías requeridas:
-    pip install opencv-python numpy matplotlib scikit-image tqdm scipy
-=============================================================================
-"""
-
 import os
 import cv2
 import numpy as np
@@ -55,7 +12,7 @@ from pathlib import Path
 
 
 # ─────────────────────────────────────────────────────────────
-#  CONFIGURACIÓN — Ajusta estas rutas antes de ejecutar
+#  CONFIGURACIÓN
 # ─────────────────────────────────────────────────────────────
 DATASET_ROOT   = "/home/manguito/Code/University/Reconocimiento de Patrones/DataSet Full/dataset" # Carpeta raíz del dataset
 OUTPUT_ROOT    = "/home/manguito/Code/University/Reconocimiento de Patrones/DataSet Full/Resultados Segmentación 2" # Carpeta de salida
@@ -95,38 +52,7 @@ def mejorar_contraste(img: np.ndarray) -> np.ndarray:
 
 
 def rellenar_huecos_pipeline(mascara: np.ndarray) -> np.ndarray:
-    """
-    Pipeline escalonado de relleno de huecos por morfología matemática.
-    Aplica 4 técnicas en orden, de menos a más agresiva, para cubrir
-    huecos de distintos tamaños y formas sin distorsionar el contorno externo.
 
-    Etapa 1 — Cierre morfológico (cv2.MORPH_CLOSE)
-        Une grietas finas y pequeños huecos en el borde.
-        Kernel elíptico de radio MORFO_CIERRE_RADIO.
-
-    Etapa 2 — Flood-fill inverso (floodFill desde esquinas)
-        Identifica el fondo verdadero (conectado al borde de la imagen)
-        y rellena todo lo interior que no pertenece al fondo.
-        Cierra huecos de cualquier tamaño que no toquen el borde.
-
-    Etapa 3 — scipy.ndimage.binary_fill_holes
-        Relleno topológico: cierra cualquier componente conexa de fondo
-        completamente rodeada por primer plano. Complementa el flood-fill
-        en casos de morfología compleja.
-
-    Etapa 4 — Envoltura convexa por región (opcional, MORFO_USAR_CONVEX_HULL)
-        Para cada región etiquetada calcula su convex hull y lo rellena.
-        Ideal para huesos con concavidades profundas o bordes irregulares.
-
-    Etapa 5 — Cierre con disco grande (skimage.morphology.binary_closing)
-        Cierre final con un disco de radio MORFO_DISCO_GRANDE para sellar
-        cualquier hueco residual de mayor tamaño que no cerraron las etapas anteriores.
-
-    Returns
-    -------
-    mascara : np.ndarray uint8
-        Máscara binaria con huecos rellenados (valores 0 / 255).
-    """
     # ── Etapa 1: Cierre morfológico inicial ──────────────────────────────
     kernel_cierre = cv2.getStructuringElement(
         cv2.MORPH_ELLIPSE,
@@ -157,15 +83,7 @@ def rellenar_huecos_pipeline(mascara: np.ndarray) -> np.ndarray:
 
 
 def segmentar_hueso(img: np.ndarray) -> np.ndarray:
-    """
-    Segmenta la región ósea usando:
-      1. Suavizado gaussiano
-      2. Umbralización de Otsu con offset ajustable
-      3. Apertura morfológica (elimina ruido fino)
-      4. Pipeline de relleno de huecos (5 etapas)
-      5. Selección de las regiones más grandes (hueso principal)
-    Devuelve una máscara binaria uint8 (0 / 255).
-    """
+
     # 1. Suavizado
     img_suave = gaussian(img, sigma=SIGMA_GAUSS, preserve_range=True).astype(np.uint8)
 
@@ -231,7 +149,7 @@ def visualizar_muestra(muestras: list, titulo: str = "Resultados de Segmentació
     """Muestra una grilla con ejemplos: original | máscara antes | máscara rellena | segmentada."""
     n = len(muestras)
     if n == 0:
-        print("⚠ No hay muestras para visualizar.")
+        print(" No hay muestras para visualizar.")
         return
 
     tiene_antes = "mascara_antes" in muestras[0]
@@ -261,7 +179,7 @@ def visualizar_muestra(muestras: list, titulo: str = "Resultados de Segmentació
     plt.savefig(os.path.join(OUTPUT_ROOT, "muestra_segmentacion.png"),
                 dpi=150, bbox_inches="tight", facecolor="#0d1117")
     plt.show()
-    print(f"\n📊 Figura guardada en: {os.path.join(OUTPUT_ROOT, 'muestra_segmentacion.png')}")
+    print(f"\n Figura guardada en: {os.path.join(OUTPUT_ROOT, 'muestra_segmentacion.png')}")
 
 
 def procesar_dataset():
@@ -331,8 +249,8 @@ def procesar_dataset():
                 print(f"\n  ✗ Error en {nombre_archivo}: {e}")
 
     print("\n" + "=" * 60)
-    print(f"  ✅ Total procesadas: {total_procesadas} imágenes")
-    print(f"  📂 Resultados guardados en: {os.path.abspath(OUTPUT_ROOT)}")
+    print(f" Total procesadas: {total_procesadas} imágenes")
+    print(f" Resultados guardados en: {os.path.abspath(OUTPUT_ROOT)}")
     print("=" * 60)
 
     # Mostrar hasta 4 muestras (2 por clase si hay suficientes)
@@ -344,4 +262,4 @@ def procesar_dataset():
 # ─────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     ruta_salida = procesar_dataset()
-    print(f"\n📌 Ruta de salida: {ruta_salida}")
+    print(f"\n Ruta de salida: {ruta_salida}")
