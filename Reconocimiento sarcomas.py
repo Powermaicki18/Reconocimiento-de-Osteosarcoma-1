@@ -12,7 +12,6 @@ Requiere:
 """
 
 from pathlib import Path
-import matplotlib.pyplot as plt
 import cv2
 import numpy as np
 import pandas as pd
@@ -22,9 +21,8 @@ from skimage.feature import graycomatrix, graycoprops
 # ==============================
 # CONFIGURACIÓN
 # ==============================
-INPUT_DIR = Path("/home/manguito/Code/University/Reconocimiento de Patrones/DataSet Full/Sarcomas Benignos")
-# Usa ruta absoluta si quieres controlar exactamente dónde se guardan los resultados
-OUTPUT_DIR = Path("/home/manguito/Code/University/Reconocimiento de Patrones/DataSet Full/Resultados Benignos")
+INPUT_DIR = Path("/home/manguito/Code/University/Reconocimiento de Patrones/DataSet Full/Sarcomas malignos")
+OUTPUT_DIR = Path("/home/manguito/Code/University/Reconocimiento de Patrones/DataSet Full/Resultados Malignos")
 SUBDIRS = ["enhanced", "denoised", "edges", "segmented"]
 
 for sub in SUBDIRS:
@@ -109,7 +107,6 @@ def process_image(path: Path):
     cv2.imwrite(str(OUTPUT_DIR / "segmented" / path.name), segmented)
 
     features = extract_basic_features(denoised, segmented)
-    features.update(extract_advanced_features(denoised, segmented))
     features["image_name"] = path.name
     return features
 
@@ -132,98 +129,6 @@ def run_pipeline():
     return df
 
 
-
-# ==============================
-# FASE 2 - CARACTERIZACIÓN AVANZADA DE PATRONES
-# ==============================
-from skimage.feature import local_binary_pattern
-from skimage.measure import label, regionprops
-
-
-def extract_advanced_features(img: np.ndarray, mask: np.ndarray):
-    """Extrae textura, forma e irregularidad para reconocimiento de patrones."""
-    features = {}
-
-    # -------- LBP (textura local) --------
-    resized = cv2.resize(img, (128, 128))
-    lbp = local_binary_pattern(resized, P=8, R=1, method="uniform")
-    hist, _ = np.histogram(lbp.ravel(), bins=np.arange(0, 11), density=True)
-    for i, v in enumerate(hist):
-        features[f"lbp_{i}"] = float(v)
-
-    # -------- Forma de la región segmentada --------
-    labeled = label(mask > 0)
-    props = regionprops(labeled)
-
-    if props:
-        largest = max(props, key=lambda x: x.area)
-        area = largest.area
-        perimeter = largest.perimeter if largest.perimeter > 0 else 1
-        circularity = 4 * np.pi * area / (perimeter ** 2)
-        eccentricity = largest.eccentricity
-        solidity = largest.solidity
-    else:
-        area, perimeter, circularity, eccentricity, solidity = 0, 0, 0, 0, 0
-
-    features.update({
-        "shape_area": float(area),
-        "shape_perimeter": float(perimeter),
-        "circularity": float(circularity),
-        "eccentricity": float(eccentricity),
-        "solidity": float(solidity),
-    })
-
-    return features
-
-
-df_features = run_pipeline()
-print(df_features.head())
-
-    # ==============================
-    # FASE 3 - ANÁLISIS ESTADÍSTICO Y VISUALIZACIÓN
-    # ==============================
-def run_statistical_analysis(df: pd.DataFrame):
-    stats_dir = OUTPUT_DIR / "stats"
-    print(f"Guardando análisis estadístico en: {stats_dir.resolve()}")
-    stats_dir.mkdir(parents=True, exist_ok=True)
-
-    print("Resumen estadístico:")
-    print(df.describe())
-
-    numeric_cols = [c for c in df.columns if c != "image_name"]
-
-    # histogramas automáticos
-    for col in numeric_cols[:6]:  # primeras 6 features para no saturar
-        plt.figure(figsize=(6, 4))
-        plt.hist(df[col].dropna(), bins=30)
-        plt.title(f"Distribución de {col}")
-        plt.xlabel(col)
-        plt.ylabel("Frecuencia")
-        plt.tight_layout()
-        plt.savefig(stats_dir / f"hist_{col}.png")
-        plt.close()
-
-    # matriz de correlación
-    corr = df[numeric_cols].corr()
-    plt.figure(figsize=(10, 8))
-    plt.imshow(corr, aspect="auto")
-    plt.colorbar()
-    plt.xticks(range(len(corr.columns)), corr.columns, rotation=90)
-    plt.yticks(range(len(corr.columns)), corr.columns)
-    plt.title("Matriz de correlación de patrones")
-    plt.tight_layout()
-    plt.savefig(stats_dir / "correlation_matrix.png")
-    plt.close()
-
-    corr.to_csv(stats_dir / "correlation_matrix.csv")
-    print("Análisis estadístico completado. Resultados guardados en /stats")
-
-# ==============================
-# EJECUCIÓN
-# ==============================
 if __name__ == "__main__":
-    print("Iniciando pipeline de procesamiento...")
     df_features = run_pipeline()
     print(df_features.head())
-    # Ejecutar FASE 3 automáticamente
-    run_statistical_analysis(df_features)
