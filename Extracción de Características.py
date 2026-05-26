@@ -1,41 +1,3 @@
-"""
-=============================================================================
-SCRIPT 2 — EXTRACCIÓN DE CARACTERÍSTICAS (GLCM · HARALICK · ESTADÍSTICAS)
-=============================================================================
-Descripción:
-    1. Carga las imágenes ORIGINALES y las SEGMENTADAS (salida del Script 1).
-    2. Realiza la multiplicación 1‑a‑1 (original × máscara normalizada).
-    3. Extrae características sobre la región de interés (ROI):
-         • GLCM  : energía, entropía, contraste, correlación, homogeneidad,
-                   disimilaridad, ASM
-         • Haralick (mahotas): 13 descriptores de Haralick
-         • Estadísticas de primer orden: media, mediana, std, varianza,
-           kurtosis, skewness, percentiles 25/75, rango intercuartílico,
-           entropía de Shannon, energía, mínimo, máximo, rango
-         • Morfología del contorno: área, perímetro, circularidad,
-           solidez, excentricidad (vía Active Contour / Snakes)
-    4. Exporta un CSV con todas las características etiquetadas
-       (0 = benigno, 1 = maligno).
-
-Estructura esperada de entrada:
-    dataset/
-    ├── Sarcomas Benignos/   ← imágenes originales
-    └── Sarcomas Malignos/
-
-    output_segmentacion/
-    ├── Sarcomas Benignos/   ← *_segmentada.png  y  *_mascara.png
-    └── Sarcomas Malignos/
-
-Salida:
-    output_caracteristicas/
-    └── caracteristicas.csv
-
-Librerías requeridas:
-    pip install opencv-python numpy pandas matplotlib scikit-image
-                scipy mahotas tqdm
-=============================================================================
-"""
-
 import os
 import warnings
 import cv2
@@ -53,7 +15,7 @@ from tqdm import tqdm
 warnings.filterwarnings("ignore")
 
 # ─────────────────────────────────────────────────────────────
-#  CONFIGURACIÓN
+#  RUTAS
 # ─────────────────────────────────────────────────────────────
 DATASET_ROOT      = "/home/manguito/Code/University/Reconocimiento de Patrones/DataSet Full/dataset 1"
 SEG_ROOT          = "/home/manguito/Code/University/Reconocimiento de Patrones/DataSet Full/Resultados Segmentación"
@@ -96,10 +58,7 @@ def cargar_par(ruta_original: str, ruta_segmentada: str):
 
 
 def multiplicar_imagenes(orig: np.ndarray, seg: np.ndarray) -> np.ndarray:
-    """
-    Multiplicación 1‑a‑1: original × (segmentada / 255).
-    Retorna la ROI con fondo negro.
-    """
+
     mascara_norm = seg.astype(np.float64) / 255.0
     roi = (orig.astype(np.float64) * mascara_norm).astype(np.uint8)
     return roi
@@ -116,9 +75,8 @@ def extraer_roi_pixeles(roi: np.ndarray) -> np.ndarray:
 
 def caracteristicas_glcm(roi: np.ndarray) -> dict:
     """
-    Calcula propiedades GLCM promediadas sobre distancias y ángulos.
-    Propiedades: energía, entropía, contraste, correlación,
-                 homogeneidad, disimilaridad, ASM.
+    energía, entropía, contraste, correlación,
+    homogeneidad, disimilaridad, ASM.
     """
     # Recortar ROI a 8 bits y normalizar niveles
     roi_8 = np.clip(roi, 0, 255).astype(np.uint8)
@@ -139,7 +97,6 @@ def caracteristicas_glcm(roi: np.ndarray) -> dict:
         val = graycoprops(glcm, prop)  # shape (n_dist, n_ang)
         resultado[f"glcm_{prop}"] = float(np.mean(val))
 
-    # Entropía de la GLCM (no disponible en graycoprops, se calcula manual)
     glcm_sum = glcm.sum(axis=(2, 3), keepdims=True)
     glcm_norm = glcm / (glcm_sum + 1e-10)
     entropia_glcm = -np.sum(
@@ -151,7 +108,7 @@ def caracteristicas_glcm(roi: np.ndarray) -> dict:
 
 
 # ══════════════════════════════════════════════════════════════
-#  CARACTERÍSTICAS HARALICK (mahotas)
+#  CARACTERÍSTICAS HARALICK
 # ══════════════════════════════════════════════════════════════
 
 HARALICK_NOMBRES = [
@@ -175,7 +132,7 @@ def caracteristicas_haralick(roi: np.ndarray) -> dict:
 
 
 # ══════════════════════════════════════════════════════════════
-#  ESTADÍSTICAS DE PRIMER ORDEN
+#  CARACTERÍSTICAS ESTADÍSTICAS
 # ══════════════════════════════════════════════════════════════
 
 def estadisticas_primer_orden(pixeles: np.ndarray) -> dict:
@@ -211,15 +168,11 @@ def estadisticas_primer_orden(pixeles: np.ndarray) -> dict:
 
 
 # ══════════════════════════════════════════════════════════════
-#  MORFOLOGÍA DEL CONTORNO (Active Contour / Snakes)
+#  MORFOLOGÍA DEL CONTORNO (Snakes)
 # ══════════════════════════════════════════════════════════════
 
 def morfologia_contorno(roi: np.ndarray) -> dict:
-    """
-    Ajusta un contorno activo (Snake) a la región de interés y extrae
-    métricas morfológicas: área, perímetro, circularidad, solidez,
-    excentricidad.
-    """
+    
     resultado = {
         "morfo_area": 0.0, "morfo_perimetro": 0.0,
         "morfo_circularidad": 0.0, "morfo_solidez": 0.0,
@@ -374,13 +327,13 @@ def procesar_dataset():
     df.to_csv(ruta_csv, index=False)
 
     print("\n" + "=" * 60)
-    print(f"  ✅ Total de imágenes procesadas: {len(df)}")
-    print(f"  📊 Características extraídas:    {len(cols_feat)}")
-    print(f"  📄 CSV guardado en: {os.path.abspath(ruta_csv)}")
+    print(f" Total de imágenes procesadas: {len(df)}")
+    print(f" Características extraídas:    {len(cols_feat)}")
+    print(f" CSV guardado en: {os.path.abspath(ruta_csv)}")
     print("=" * 60)
 
     # Resumen estadístico por clase
-    print("\n📋 Resumen por clase:")
+    print("\n Resumen por clase:")
     print(df.groupby("categoria")[cols_feat[:6]].mean().round(4).to_string())
 
     return df
