@@ -1,37 +1,3 @@
-"""
-=============================================================================
-SCRIPT 3 — VISUALIZACIÓN: BOXPLOTS · VIOLIN PLOTS · MATRIZ DE CORRELACIÓN
-=============================================================================
-Descripción:
-    Lee el CSV generado por el Script 2 y produce:
-      1. Diagramas de caja (boxplots) por característica y clase.
-      2. Diagramas de violín (violin plots) por característica y clase.
-      3. Matriz de correlación de las características.
-      4. Ranking de poder discriminante (test de Mann-Whitney U + efecto d).
-    Todos los gráficos se guardan en output_visualizacion/.
-
-Entrada:
-    output_caracteristicas/caracteristicas.csv
-
-Salida:
-    output_visualizacion/
-    ├── 01_boxplots_glcm.png
-    ├── 02_boxplots_haralick.png
-    ├── 03_boxplots_estadisticas.png
-    ├── 04_boxplots_morfologia.png
-    ├── 05_violins_glcm.png
-    ├── 06_violins_haralick.png
-    ├── 07_violins_estadisticas.png
-    ├── 08_violins_morfologia.png
-    ├── 09_correlacion_completa.png
-    ├── 10_correlacion_top20.png
-    └── 11_ranking_discriminante.png
-
-Librerías requeridas:
-    pip install pandas numpy matplotlib seaborn scipy
-=============================================================================
-"""
-
 import os
 import warnings
 import numpy as np
@@ -45,7 +11,7 @@ from pathlib import Path
 warnings.filterwarnings("ignore")
 
 # ─────────────────────────────────────────────────────────────
-#  CONFIGURACIÓN
+#  Rutas
 # ─────────────────────────────────────────────────────────────
 CSV_ENTRADA    = os.path.join("/home/manguito/Code/University/Reconocimiento de Patrones/DataSet Full/Resultados Características", "caracteristicas.csv")
 OUTPUT_VIZ     = "/home/manguito/Code/University/Reconocimiento de Patrones/DataSet Full/Resultados Características/Gráficas Características"
@@ -173,7 +139,7 @@ def graficar_boxplots(df: pd.DataFrame, columnas: list,
     plt.savefig(ruta_salida, dpi=DPI, bbox_inches="tight",
                 facecolor="#0d1117")
     plt.close()
-    print(f"  💾 {os.path.basename(ruta_salida)}")
+    print(f" {os.path.basename(ruta_salida)}")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -251,7 +217,7 @@ def graficar_violins(df: pd.DataFrame, columnas: list,
     plt.savefig(ruta_salida, dpi=DPI, bbox_inches="tight",
                 facecolor="#0d1117")
     plt.close()
-    print(f"  💾 {os.path.basename(ruta_salida)}")
+    print(f"{os.path.basename(ruta_salida)}")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -309,17 +275,12 @@ def graficar_correlacion(df: pd.DataFrame, columnas: list,
 
 
 # ══════════════════════════════════════════════════════════════
-#  RANKING DISCRIMINANTE
+#  DISCRIMINANTE DE CARACTERÍSTICAS
 # ══════════════════════════════════════════════════════════════
 
 def graficar_ranking_discriminante(df: pd.DataFrame, columnas: list,
                                    ruta_salida: str, top_n: int = 20):
-    """
-    Calcula el ranking de características más discriminantes usando:
-    - Estadístico U de Mann-Whitney (potencia)
-    - Tamaño del efecto d de Cohen
-    Grafica las top_n características.
-    """
+                                       
     resultados = []
     g0 = df.loc[df["etiqueta"] == 0]
     g1 = df.loc[df["etiqueta"] == 1]
@@ -413,10 +374,10 @@ def graficar_ranking_discriminante(df: pd.DataFrame, columnas: list,
     plt.savefig(ruta_salida, dpi=DPI, bbox_inches="tight",
                 facecolor="#0d1117")
     plt.close()
-    print(f"  💾 {os.path.basename(ruta_salida)}")
+    print(f" {os.path.basename(ruta_salida)}")
 
     # Imprimir tabla resumen
-    print("\n📊 Top características más discriminantes:")
+    print("\n Top características más discriminantes:")
     print(df_top[["caracteristica", "cohen_d", "p_valor"]].to_string(index=False))
 
     return df_rank
@@ -437,7 +398,7 @@ def visualizar():
         return
 
     df = pd.read_csv(CSV_ENTRADA)
-    print(f"\n✅ Dataset cargado: {len(df)} muestras, {df.shape[1]} columnas")
+    print(f"\n Dataset cargado: {len(df)} muestras, {df.shape[1]} columnas")
     print(f"   Benignos:  {(df['etiqueta']==0).sum()}  |  Malignos: {(df['etiqueta']==1).sum()}")
 
     os.makedirs(OUTPUT_VIZ, exist_ok=True)
@@ -453,14 +414,14 @@ def visualizar():
         for nombre, fn in GRUPOS.items()
     }
 
-    print("\n📦 Grupos de características:")
+    print("\n Grupos de características:")
     for g, cols in grupos_cols.items():
         print(f"   {g}: {len(cols)} características")
 
     idx = 1
 
     # ── Boxplots
-    print("\n🔲 Generando Boxplots...")
+    print("\n Generando Boxplots...")
     for nombre, cols in grupos_cols.items():
         if cols:
             ruta = os.path.join(OUTPUT_VIZ, f"{idx:02d}_boxplots_{nombre.lower()}.png")
@@ -468,7 +429,7 @@ def visualizar():
             idx += 1
 
     # ── Violin plots
-    print("\n🎻 Generando Violin Plots...")
+    print("\n Generando Violin Plots...")
     for nombre, cols in grupos_cols.items():
         if cols:
             ruta = os.path.join(OUTPUT_VIZ, f"{idx:02d}_violins_{nombre.lower()}.png")
@@ -476,7 +437,7 @@ def visualizar():
             idx += 1
 
     # ── Matriz de correlación completa
-    print("\n🔥 Generando Matrices de Correlación...")
+    print("\n Generando Matrices de Correlación...")
     ruta_corr_full = os.path.join(OUTPUT_VIZ, f"{idx:02d}_correlacion_completa.png")
     graficar_correlacion(df, cols_feat, "Todas las características",
                          ruta_corr_full, max_feats=40)
@@ -496,7 +457,7 @@ def visualizar():
                              ruta_corr_top)
 
     print("\n" + "=" * 60)
-    print(f"  ✅ Visualizaciones guardadas en: {os.path.abspath(OUTPUT_VIZ)}")
+    print(f" Visualizaciones guardadas en: {os.path.abspath(OUTPUT_VIZ)}")
     print("=" * 60)
 
 
